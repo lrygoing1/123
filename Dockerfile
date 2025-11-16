@@ -24,10 +24,10 @@ RUN CHROME_VERSION=$(google-chrome --version | grep -oE '[0-9]+\.[0-9]+\.[0-9]+\
     && MAJOR_VERSION=$(echo "$CHROME_VERSION" | cut -d. -f1-3) \
     && echo "主版本: $MAJOR_VERSION" \
     && DRIVER_JSON=$(curl -s "https://googlechromelabs.github.io/chrome-for-testing/last-known-good-versions-with-downloads.json") \
-    && DRIVER_URL=$(echo "$DRIVER_JSON" | jq -r '.version | .[] | select(.version == "'"$CHROME_VERSION"'") | .downloads.chromedriver[] | select(.platform == "linux64") | .url') \
+    && DRIVER_URL=$(echo "$DRIVER_JSON" | jq -r '.channels[] | select(.version == "'"$CHROME_VERSION"'") | .downloads.chromedriver[] | select(.platform == "linux64") | .url') \
     && if [ -z "$DRIVER_URL" ]; then \
          echo "未找到匹配的 Chromedriver，尝试用主版本: $MAJOR_VERSION"; \
-         DRIVER_URL=$(echo "$DRIVER_JSON" | jq -r '.version | .[] | select(.version | startswith("'"$MAJOR_VERSION"'.")) | .downloads.chromedriver[] | select(.platform == "linux64") | .url' | head -1); \
+         DRIVER_URL=$(echo "$DRIVER_JSON" | jq -r '.channels[] | select(.version | startswith("'"$MAJOR_VERSION"'.")) | .downloads.chromedriver[] | select(.platform == "linux64") | .url' | head -1); \
        fi \
     && echo "Chromedriver 下载地址: $DRIVER_URL" \
     && wget -O /tmp/chromedriver.zip "$DRIVER_URL" \
