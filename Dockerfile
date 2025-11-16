@@ -7,6 +7,8 @@ RUN apt-get update && apt-get install -y \
     gnupg2 \
     unzip \
     ca-certificates \
+    curl \
+    jq \
     && rm -rf /var/lib/apt/lists/*
 
 # 安装 Google Chrome
@@ -16,17 +18,23 @@ RUN wget -q -O - https://dl.google.com/linux/linux_signing_key.pub | gpg --dearm
     && apt-get install -y google-chrome-stable \
     && rm -rf /var/lib/apt/lists/*
 
-# 获取 Chrome 版本并安装匹配的 Chromedriver
-RUN CHROME_VERSION=$(google-chrome --version | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1) \
-    && echo "Chrome 版本: $CHROME_VERSION" \
-    && MAJOR=$(echo "$CHROME_VERSION" | cut -d. -f1-3) \
-    && DRIVER_VERSION=$(wget -qO- "https://chromedriver.storage.googleapis.com/LATEST_RELEASE_${MAJOR}") \
-    && echo "Chromedriver 版本: $DRIVER_VERSION" \
-    && wget -O /tmp/chromedriver.zip "https://chromedriver.storage.googleapis.com/${DRIVER_VERSION}/chromedriver_linux64.zip" \
+# 获取 Chrome 版本并从 chrome-for-testing 下载匹配的 Chromedriver
+RUN CHROME_VERSION=$(google-chrome --version | grep -oE '[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+' | head -1) \
+    && echo "Chrome 完整版本: $CHROME_VERSION" \
+    && MAJOR_VERSION=$(echo "$CHROME_VERSION" | cut -d. -f1-3) \
+    && echo "主版本: $MAJOR_VERSION" \
+    && DRIVER_JSON=$(curl -s "https://googlechromelabs.github.io/chrome-for-testing/last-known-good-versions-with-downloads.json") \
+    && DRIVER_URL=$(echo "$DRIVER_JSON" | jq -r '.version | .[] | select(.version == "'"$CHROME_VERSION"'") | .downloads.chromedriver[] | select(.platform == "linux64") | .url') \
+    && if [ -z "$DRIVER_URL" ]; then \
+         echo "未找到匹配的 Chromedriver，尝试用主版本: $MAJOR_VERSION"; \
+         DRIVER_URL=$(echo "$DRIVER_JSON" | jq -r '.version | .[] | select(.version | startswith("'"$MAJOR_VERSION"'.")) | .downloads.chromedriver[] | select(.platform == "linux64") | .url' | head -1); \
+       fi \
+    && echo "Chromedriver 下载地址: $DRIVER_URL" \
+    && wget -O /tmp/chromedriver.zip "$DRIVER_URL" \
     && unzip /tmp/chromedriver.zip -d /tmp \
-    && mv /tmp/chromedriver /usr/bin/chromedriver \
+    && find /tmp -name chromedriver -exec mv {} /usr/bin/chromedriver \; \
     && chmod +x /usr/bin/chromedriver \
-    && rm /tmp/chromedriver.zip
+    && rm -rf /tmp/chromedriver*
 
 # 复制 Python 代码
 WORKDIR /app
