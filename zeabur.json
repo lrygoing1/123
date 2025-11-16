@@ -1,0 +1,17 @@
+{
+  "services": [
+    {
+      "name": "gcli-bot",
+      "source": {
+        "type": "docker"
+      },
+      "deployment": {
+        "resources": {
+          "cpu": 1000,
+          "memory": 1024
+        },
+        "replicas": 1
+      }
+    }
+  ]
+}
